@@ -17,16 +17,16 @@
  ### 관리자
  1. 회원관리
  2. 유료서비스 관리
- 3. 공지사항 및 문의내역 관리
+ 3. 공지사항 및 문의내역 관
 
 ## 2. 개발환경
-### + Front-End
+### Front-End
 * HTML5, CSS3
 * Javascript, Vue.js, JQuery, JQuery.serialize-object.js, Ajax
 * Summernote 0.8.15, I’mport API, Kakao Map API, Chartist.js, Bootstrap, Kendo-grid API, CK Editor
 * Sweetalert2, Bx Slider, 공정거래위원회 사업자번호 검색 API
 
-### + Back-End
+### Back-End
 * JDK1.8.0
 * Spring Framework 5.2.0
 * Spring Security 5.2.0
@@ -39,7 +39,7 @@
 * Spring Scheduler(quartz) 2.3.0
 * Spring web socket 5.2.0, goldfish 1.0.4
 
-### + Server
+### Server
 * Apache-Tomcat 8.5
 
 <img width="563" alt="pickme_main" src="https://user-images.githubusercontent.com/55383234/89700552-f9905280-d969-11ea-8ced-84173684e04d.png">
