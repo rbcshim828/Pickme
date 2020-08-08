@@ -20,27 +20,27 @@
  3. 공지사항 및 문의내역 관리
 
 ## 2. 개발환경
-### Front-End
-HTML5, CSS
-Javascript, Vue.js, JQuery, JQuery.serialize-object.js, Ajax
-Summernote 0.8.15, I’mport API, Kakao Map API, Chartist.js, Bootstrap, Kendo-grid API, CK Editor
-Sweetalert2, Bx Slider, 공정거래위원회 사업자번호 검색 API
+### +Front-End
+* HTML5, CSS3
+* Javascript, Vue.js, JQuery, JQuery.serialize-object.js, Ajax
+* Summernote 0.8.15, I’mport API, Kakao Map API, Chartist.js, Bootstrap, Kendo-grid API, CK Editor
+* Sweetalert2, Bx Slider, 공정거래위원회 사업자번호 검색 API
 
-### Back-End
-JDK1.8.0
-Spring Framework 5.2.0
-Spring Security 5.2.0
-Maven 3.8.0
-Jackson 2.10.1
-MyBatis 3.5.3,
-Apache-Tomcat 8.5
-Fileuploader 1.3.3
-Java Mail Sender 1.5
-Spring Scheduler(quartz) 2.3.0
-Spring web socket 5.2.0, goldfish 1.0.4
+### +Back-End
+* JDK1.8.0
+* Spring Framework 5.2.0
+* Spring Security 5.2.0
+* Maven 3.8.0
+* Jackson 2.10.1
+* MyBatis 3.5.3,
+* Apache-Tomcat 8.5
+* Fileuploader 1.3.3
+* Java Mail Sender 1.5
+* Spring Scheduler(quartz) 2.3.0
+* Spring web socket 5.2.0, goldfish 1.0.4
 
-### Server
-Apache-Tomcat 8.5
+### +Server
+* Apache-Tomcat 8.5
 
 <img width="563" alt="pickme_main" src="https://user-images.githubusercontent.com/55383234/89700552-f9905280-d969-11ea-8ced-84173684e04d.png">
 
