@@ -39,8 +39,6 @@
 * Spring Scheduler(quartz) 2.3.0
 * Spring web socket 5.2.0, goldfish 1.0.4
 
-### Server
-* Apache-Tomcat 8.5
 
 <img width="563" alt="pickme_main" src="https://user-images.githubusercontent.com/55383234/89700552-f9905280-d969-11ea-8ced-84173684e04d.png">
 
