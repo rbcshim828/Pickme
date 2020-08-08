@@ -1,0 +1,298 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE mapper
+  PUBLIC "-//www.mybatis.org//DTD Mapper 3.0//EN"
+  "http://www.mybatis.org/dtd/mybatis-3-mapper.dtd">
+    
+<mapper namespace="Resume">
+
+<!--  이력서 마지막 시퀀스 번호 + 1  -->
+<select id="resumeGetSeq" resultType="int">
+	SELECT IFNULL(MAX(A.SEQ), 0)+1 FROM RESUME A
+</select>
+
+<!-- 이력서 파일 정보  select -->
+<select id="resumeFileSelect" parameterType="int" resultType="model.ResumeFileDto">
+	SELECT SEQ RSMSEQ, ORIGINALNAME, STOREDNAME, FILEPATH
+	FROM RESUME_FILE
+	WHERE RSMSEQ=#{seq}
+</select>
+
+<!-- 이력서 파일 정보  insert -->
+<insert id="resumeFileInsert" parameterType="model.ResumeFileDto">
+	INSERT INTO RESUME_FILE(RSMSEQ, ORIGINALNAME, STOREDNAME, FILEPATH)
+	VALUES (#{rsmSeq}, #{originalName}, #{storedName}, #{filePath})
+</insert>
+
+<!-- 이력서 기본 정보  insert -->
+<insert id="resumeInsert" parameterType="model.ResumeDto">
+	INSERT INTO RESUME(MEMSEQ, NAME, USERNAME, PHONE, EMAIL, INTRODUCE, WDATE, STATUS, MAINRESUME, DEL)
+	VALUES (#{memSeq}, #{name}, #{userName}, #{phone}, #{email}, #{introduce}, SYSDATE(), #{status}, 0, 0)
+</insert>
+
+<!-- 경력  insert -->
+<insert id="careerInsert" parameterType="model.CareerDto">
+   INSERT INTO CAREER(RSMSEQ, COMPANY, POSITION, STARTDATE, ENDDATE, ING)
+   VALUES (#{rsmseq}, #{company}, #{position}, #{startdate}, #{enddate}, #{ing})
+</insert>
+
+<!-- 학력  insert -->
+<insert id="educationInsert" parameterType="model.EducationDto">
+   INSERT INTO EDUCATION(RSMSEQ, SCHOOL, MAJOR, STUDY, STARTDATE, ENDDATE, ING)
+   VALUES (#{rsmseq}, #{school}, #{major}, #{study}, #{startdate}, #{enddate}, #{ing})
+</insert>
+
+<!-- 수상 및 기타  insert -->
+<insert id="AwardsEtcInsert" parameterType="model.AwardsEtcDto">
+   INSERT INTO AWARDSETC(RSMSEQ, AWARDS, DETAIL, DATE)
+   VALUES (#{rsmseq}, #{awards}, #{detail}, #{date})
+</insert>
+
+<!-- 외국어  insert -->
+<insert id="LanguageInsert" parameterType="model.LanguageDto">
+   INSERT INTO LANGUAGE(RSMSEQ, LANG, LEVEL, TEST, SCORE, DATE)
+   VALUES (#{rsmseq}, #{lang}, #{level}, #{test}, #{score}, #{date})
+</insert>
+
+<!-- 링크  insert -->
+<insert id="LinkInsert" parameterType="model.LinkDto">
+   INSERT INTO LINK(RSMSEQ, URL)
+   VALUES (#{rsmseq}, #{url})
+</insert>
+
+
+<!-- 이력서 총 개수 -->
+<select id="ResumeCount" resultType="int">
+	SELECT IFNULL(COUNT(*),0) AS CNT FROM RESUME WHERE MEMSEQ=#{memSeq} AND DEL=0
+</select>
+
+<!-- 이력서 관리 list(페이징) -->
+<select id="ResumeAllList" parameterType="model.ResumeParam" resultType="model.ResumeDto">
+	SELECT SEQ, MEMSEQ, NAME, WDATE, STATUS, MAINRESUME, DEL
+	FROM ( SELECT * FROM RESUME WHERE DEL=0 ORDER BY SEQ DESC ) R
+	WHERE MEMSEQ = ${memSeq}
+	LIMIT #{recordCountPerPage} OFFSET #{start} 
+</select>
+
+<!-- 이력서 관리 list(페이징) -->
+<select id="ResumeAllList02" parameterType="model.ResumeDto" resultType="model.ResumeDto">
+	SELECT SEQ, MEMSEQ, NAME, WDATE, STATUS, MAINRESUME, DEL
+	FROM RESUME
+	WHERE DEL=0
+	ORDER BY SEQ DESC
+</select>
+
+<!-- 이력서 관리 이력서명 변경 -->
+<update id="ResumeNameUpdate" parameterType="model.ResumeDto">	
+	UPDATE RESUME 
+	SET NAME=#{name}
+	WHERE SEQ=#{seq} AND DEL=0
+</update>
+
+<!-- 이력서 관리 메인 이력서 변경 -->
+<!-- 메인 이력서 0 초기화 -->
+<update id="MainResumeReset" parameterType="int">	
+	UPDATE RESUME 
+	SET MAINRESUME=0
+	WHERE MEMSEQ=#{memSeq} AND DEL=0 
+</update>
+<!-- 메인 이력서 1 -->
+<update id="MainResumeUpdate" parameterType="int">	
+	UPDATE RESUME 
+	SET MAINRESUME=1
+	WHERE SEQ=#{seq} AND DEL=0
+</update>
+
+<!-- 이력서 삭제 -->
+<update id="ResumeDelete" parameterType="int">	
+	UPDATE RESUME 
+	SET DEL=1
+	WHERE SEQ=#{seq}
+</update>
+
+<!-- detail 기본 이력서 정보  -->
+<select id="ResumeDetail" parameterType="hashmap" resultType="model.ResumeDto">
+	SELECT SEQ, MEMSEQ, NAME, USERNAME, PHONE, EMAIL, INTRODUCE, WDATE, STATUS, MAINRESUME, DEL
+	FROM RESUME 
+	WHERE SEQ=#{seq} AND MEMSEQ=#{memSeq} AND DEL=0
+</select> 
+
+<!-- detail 경력   -->
+<select id="CareerDetail" parameterType="int" resultType="model.CareerDto">
+	SELECT SEQ, RSMSEQ, COMPANY, POSITION, STARTDATE, ENDDATE, ING
+	FROM CAREER
+	WHERE RSMSEQ=#{rsmseq}
+</select>
+
+<!-- detail 학력   -->
+<select id="educationDetail" parameterType="int" resultType="model.EducationDto">
+	SELECT SEQ, RSMSEQ, SCHOOL, MAJOR, STUDY, STARTDATE, ENDDATE, ING
+	FROM EDUCATION
+	WHERE RSMSEQ=#{rsmseq}
+</select>
+
+<!-- detail 수상 및 기타  -->
+<select id="AwardsEtcDetail" parameterType="int" resultType="model.AwardsEtcDto">
+	SELECT SEQ, RSMSEQ, AWARDS, DETAIL, DATE
+	FROM AWARDSETC
+	WHERE RSMSEQ=#{rsmseq}
+</select>
+
+<!-- detail 외국어  -->
+<select id="LanguageDetail" parameterType="int" resultType="model.LanguageDto">
+	SELECT SEQ, RSMSEQ, LANG, LEVEL, TEST, SCORE, DATE
+	FROM LANGUAGE
+	WHERE RSMSEQ=#{rsmseq}
+</select>
+
+<!-- detail 링크  -->
+<select id="LinkDetail" parameterType="int" resultType="model.LinkDto">
+	SELECT SEQ, RSMSEQ, URL
+	FROM LINK
+	WHERE RSMSEQ=#{rsmseq}
+</select>
+
+<!-- delete 경력 -->
+<delete id="careerDelete" parameterType="int">
+	DELETE FROM CAREER
+	WHERE SEQ=#{seq}
+</delete>
+
+<!-- delete 학력 -->
+<delete id="educationDelete" parameterType="int">
+	DELETE FROM EDUCATION
+	WHERE SEQ=#{seq}
+</delete>
+
+<!-- delete 수상 및 기타 -->
+<delete id="AwardsEtcDelete" parameterType="int">
+	DELETE FROM AWARDSETC
+	WHERE SEQ=#{seq}
+</delete>
+
+<!-- delete 외국어 -->
+<delete id="LanguageDelete" parameterType="int">
+	DELETE FROM LANGUAGE
+	WHERE SEQ=#{seq}
+</delete>
+
+<!-- delete 링크 -->
+<delete id="LinkDelete" parameterType="int">
+	DELETE FROM LINK
+	WHERE SEQ=#{seq}
+</delete>
+
+<!-- delete 파일 -->
+<delete id="fileDelete" parameterType="int">
+	DELETE FROM RESUME_FILE 
+	WHERE RSMSEQ=#{rsmSeq}
+</delete>
+
+<!-- update 이력서 기본 정보  -->
+<update id="resumeUpdate" parameterType="model.ResumeDto">	
+	UPDATE RESUME 
+	SET NAME=#{name}, PHONE=#{phone}, EMAIL=#{email}, INTRODUCE=#{introduce}, STATUS=#{status}
+	WHERE SEQ=#{seq}
+</update>
+
+<!-- delete 경력  전부 다 -->
+<delete id="careerDeleteAll" parameterType="int">
+	DELETE FROM CAREER
+	WHERE RSMSEQ=#{rsmseq}
+</delete>
+
+<!-- delete 학력 전부 다 -->
+<delete id="educationDeleteAll" parameterType="int">
+	DELETE FROM EDUCATION
+	WHERE RSMSEQ=#{rsmseq}
+</delete>
+
+<!-- delete 수상 및 기타 전부 다 -->
+<delete id="AwardsEtcDeleteAll" parameterType="int">
+	DELETE FROM AWARDSETC
+	WHERE RSMSEQ=#{rsmseq}
+</delete>
+
+<!-- delete 외국어 전부 다 -->
+<delete id="LanguageDeleteAll" parameterType="int">
+	DELETE FROM LANGUAGE
+	WHERE RSMSEQ=#{rsmseq}
+</delete>
+
+<!-- delete 링크 전부 다 -->
+<delete id="LinkDeleteAll" parameterType="int">
+	DELETE FROM LINK
+	WHERE RSMSEQ=#{rsmseq}
+</delete>
+
+<!-- update 경력 -->
+<insert id="careerUpdate" parameterType="model.CareerDto">
+    INSERT INTO CAREER(SEQ, RSMSEQ, COMPANY, POSITION, STARTDATE, ENDDATE, ING)
+    VALUES (#{seq}, #{rsmseq}, #{company}, #{position}, #{startdate}, #{enddate}, #{ing})
+    ON DUPLICATE KEY UPDATE
+       RSMSEQ = values(RSMSEQ),
+       COMPANY = values(COMPANY),
+       POSITION = values(POSITION),
+       STARTDATE = values(STARTDATE),
+       ENDDATE = values(ENDDATE),
+       ING = values(ING)
+</insert>
+
+<!-- update 학력  -->
+<insert id="educationUpdate" parameterType="model.EducationDto">
+   INSERT INTO EDUCATION(SEQ, RSMSEQ, SCHOOL, MAJOR, STUDY, STARTDATE, ENDDATE, ING)
+   VALUES (SEQ, #{rsmseq}, #{school}, #{major}, #{study}, #{startdate}, #{enddate}, #{ing})
+   ON DUPLICATE KEY
+   UPDATE
+       RSMSEQ = values(RSMSEQ),
+       SCHOOL = values(SCHOOL),
+       MAJOR = values(MAJOR),
+       STUDY = values(STUDY),
+       STARTDATE = values(STARTDATE),
+       ENDDATE = values(ENDDATE),
+       ING = values(ING)
+</insert>
+
+<!-- update 수상 및 기타  -->
+<insert id="AwardsEtcUpdate" parameterType="model.AwardsEtcDto">
+   INSERT INTO AWARDSETC(SEQ, RSMSEQ, AWARDS, DETAIL, DATE)
+   VALUES (SEQ, #{rsmseq}, #{awards}, #{detail}, #{date})
+   ON DUPLICATE KEY
+   UPDATE
+       RSMSEQ = values(RSMSEQ),
+       AWARDS = values(AWARDS),
+       DETAIL = values(DETAIL),
+       DATE = values(DATE)
+</insert>
+
+<!-- update 외국어  -->
+<insert id="LanguageUpdate" parameterType="model.LanguageDto">
+   INSERT INTO LANGUAGE(SEQ, RSMSEQ, LANG, LEVEL, TEST, SCORE, DATE)
+   VALUES (SEQ, #{rsmseq}, #{lang}, #{level}, #{test}, #{score}, #{date})
+   ON DUPLICATE KEY
+   UPDATE
+       RSMSEQ = values(RSMSEQ),
+       LANG = values(LANG),
+       LEVEL = values(LEVEL),
+       TEST = values(TEST),
+       SCORE = values(SCORE),
+       DATE = values(DATE)
+</insert>
+
+<!-- update 링크  -->
+<insert id="LinkUpdate" parameterType="model.LinkDto">
+   INSERT INTO LINK(SEQ, RSMSEQ, URL)
+   VALUES (SEQ, #{rsmseq}, #{url})
+   ON DUPLICATE KEY
+   UPDATE
+       RSMSEQ = values(RSMSEQ),
+       URL = values(URL)
+</insert>
+
+
+
+
+
+
+
+
+</mapper>

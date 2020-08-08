@@ -1,0 +1,175 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE mapper
+  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+  
+<mapper namespace="Payment">
+<!-- 통계 -->
+<!-- 서비스별 이용고객 비율  -->
+<select id="getStatistics" resultType="model.PaymentParam">
+select *
+from(select count(servicename) as memberCount, servicename
+		from PREMIER_MEM
+		where enddate >= now()
+		group by servicename) a
+order by servicename
+</select>
+<!-- 신규 이용고객 -->
+<select id="getNewPremierMember" resultType="int">
+select count(*)
+from PREMIER_MEM
+where startdate + interval 3 day >= now()
+</select>
+<!-- 환불 건수 -->
+<select id="getRefundNumber" resultType="int">
+select count(*)
+from payment
+where refund = 1 and requestdate + interval 1 day >= now()
+</select>
+<!-- 유료 서비스 회원 불러오기 -->
+<select id="getPremierMember" resultType="model.PremierMemDto">
+SELECT p.SEQ, cmember.NAME, p.USERSEQ, p.SERVICENAME, p.STARTDATE, p.ENDDATE, p.SERVICESEQ, p.IMPUID, p.DEL
+from PREMIER_MEM AS p INNER JOIN C_MEMBER AS cmember
+ON p.USERSEQ = cmember.SEQ
+ORDER BY p.STARTDATE ASC, p.ENDDATE DESC
+</select>
+<!-- 유료 서비스 모두보기 -->
+<select id="getPremierService" resultType="model.PremierServiceDto">
+SELECT * FROM PREMIER_SERVICE
+WHERE DEL != 1
+</select>
+<!-- 유료 서비스 등록하기 -->
+<select id="insertService" parameterType="model.PremierServiceDto">
+INSERT INTO PREMIER_SERVICE ( SERVICENAME, PRICE, DEL, CONTENT, PERIOD, SERVICEINFO  )
+VALUES ( #{serviceName}, #{price}, 0, #{content}, #{period}, #{serviceInfo} )
+</select>
+<!-- 유료 서비스 데이터불러오기 -->
+<select id="getServiceDetail" parameterType="int" resultType="model.PremierServiceDto">
+SELECT * FROM PREMIER_SERVICE
+WHERE SERVICESEQ = ${serviceSeq}
+</select>
+<!-- 유료 서비스 수정하기 -->
+<update id="updateService" parameterType="model.PremierServiceDto">
+UPDATE PREMIER_SERVICE
+SET SERVICENAME = #{serviceName}, PRICE = #{price}, PERIOD = #{period}, SERVICEINFO = #{serviceInfo}, CONTENT = #{content}
+WHERE SERVICESEQ = ${serviceSeq}
+</update>
+<!-- 유료 서비스 삭제하기 -->
+<update id="deleteService" parameterType="int">
+UPDATE PREMIER_SERVICE
+SET DEL = 1
+WHERE SERVICESEQ = ${serviceSeq}
+</update>
+
+<!-- 결제 승인 후 DB(Payment) 저장 -->
+<insert id="setPaymentInfo" parameterType="model.PaymentDto">
+   INSERT INTO PAYMENT ( BUYERID, SERVICENAME, PAYDATE, TOTALPAY, PAYMENTID, IMPUID, ENDDATE, REFUND )
+   VALUES ( #{buyerId}, #{serviceName}, NOW(), #{totalPay}, #{paymentId}, #{impUid}, DATE_ADD(DATE_FORMAT(NOW(), '%Y-%m-%d'), INTERVAL 1 MONTH), 0 )
+</insert>
+
+<!-- 결제 승인 후 DB(Premier_Mem) 저장 -->
+<insert id="insertPremierMem" parameterType="model.PremierMemDto">
+   INSERT INTO PREMIER_MEM ( USERSEQ, SERVICESEQ, SERVICENAME, STARTDATE, ENDDATE, IMPUID, DEL  )
+   VALUES ( ${userSeq}, ${serviceSeq}, #{serviceName}, NOW(), NOW() + INTERVAL 1 MONTH, #{impUid}, 0 )
+</insert>
+
+<!-- 결제 페이지 이동 -->
+<select id = "showPayment" parameterType = "model.PaymentDto" resultType="model.PaymentDto">
+	SELECT BUYERID, SERVICENAME, PAYDATE, TOTALPAY, PAYMENTID, IMPUID, ENDDATE, REFUND
+	FROM PAYMENT
+	WHERE BUYERID=#{buyerId}
+	ORDER BY PAYDATE DESC
+</select>
+
+<!-- 현재 서비스 진행중인지 (1개만뽑기) -->
+<select id = "recentService" parameterType = "model.PaymentDto" resultType="model.PaymentDto">
+    SELECT SERVICENAME, PAYDATE, TOTALPAY, ENDDATE
+	FROM PAYMENT
+	WHERE BUYERID=#{buyerId} AND REFUND != 1 AND <![CDATA[ NOW() < ENDDATE ]]>
+	ORDER BY PAYDATE ASC
+	LIMIT 1
+</select>
+
+<!-- 환불하기 - 환불할 서비스 불러오기  -->
+<select id="getRefundableService" parameterType="int" resultType="model.PaymentDto">
+select p.seq, p.buyerid, c.name as buyerName, p.servicename, p.paydate, p.totalpay, p.refund, p.requestdate, p.refunddate, p.method, p.paymentid, p.impuid, p.refundinfo, p.enddate
+from payment p
+inner join C_MEMBER c on c.seq = p.buyerid
+where p.enddate >= now() and p.buyerid = ${seq} AND (p.refund IS NULL OR p.refund = 0 )
+order by p.enddate desc 
+limit 1
+</select>
+
+<!-- 환불하기 - 환불할 데이터가 존재하는지 확인하기 -->
+<select id="checkRefundData" parameterType="String" resultType="model.PaymentDto">
+SELECT * FROM PAYMENT
+WHERE IMPUID = #{impUid}
+</select>
+
+<!-- 환불하기 - 환불 후 결제 데이터베이스 수정하기  -->
+<update id="updateRefundPayment" parameterType="model.PaymentDto">
+UPDATE PAYMENT
+SET REFUND = 1, REFUNDDATE = NOW(), REFUNDDATE = NOW(), REFUNDINFO = #{refundInfo}
+WHERE IMPUID = #{impUid}
+</update>
+<!-- 환불 후 유료회원 데이터베이스 수정하기  -->
+<update id="updateRefundPremiereMem" parameterType="model.PaymentDto">
+UPDATE PREMIER_MEM
+SET DEL = 1
+WHERE IMPUID = #{impUid}
+</update>
+
+
+<!-- 관리자 - 결제서비스 모두 불러오기  -->
+<select id="getAllPayments" resultType="model.PaymentDto">
+select p.seq, p.buyerid, c.name as buyerName, p.servicename, p.paydate, p.totalpay, p.refund, p.requestdate, p.refunddate, p.method, p.paymentid, p.impuid, p.refundinfo, p.enddate
+from payment p
+inner join C_MEMBER c on c.seq = p.buyerid
+</select>
+<!-- 관리자 - 환불처리 모두 불러오기 -->
+<select id="getAllRefund" resultType="model.PaymentDto">
+select p.seq, p.buyerid, c.name as buyerName, p.servicename, p.paydate, p.totalpay, p.refund, p.requestdate, p.refunddate, p.method, p.paymentid, p.impuid, p.refundinfo, p.enddate
+from payment p
+inner join C_MEMBER c on c.seq = p.buyerid
+where refund = 1
+</select>
+<!-- 관리자 - 환불내역 삭제하 -->
+<delete id="deleteRefund" parameterType="int">
+DELETE FROM PAYMENT
+WHERE SEQ = ${seq}
+</delete>
+
+<!-- 유료서비스 불러오기(결제페이지 이동) -->
+<select id = "showPremier" parameterType="int" resultType="model.PremierServiceDto">
+	SELECT SERVICESEQ, SERVICENAME, PRICE, PERIOD, SERVICEINFO, CONTENT, DEL
+	FROM PREMIER_SERVICE
+	WHERE DEL=0 AND SERVICESEQ = ${serviceSeq}
+</select>
+<!-- 결제페이지 이동시 가입할 기업 Dto 불러오기  -->
+<select id = "getCmemberDto" parameterType="int" resultType="model.CMemberDto">
+	SELECT EMAIL, NAME, TEL, ADDRESS
+	FROM C_MEMBER
+	WHERE SEQ = ${seq}
+</select>
+
+<!-- 가장 최근 결제 서비스의 종료일 -->
+<!-- <select id = "showRecentPay" parameterType = "model.PaymentDto" resultType="model.PaymentDto">
+	SELECT DATE_ADD(DATE_FORMAT(PAYDATE, '%Y-%m-%d'), INTERVAL 1 MONTH)
+	FROM PAYMENT
+	WHERE BUYERID={buyerId}
+	ORDER BY PAYDATE DESC LIMIT 1
+</select> -->
+
+<!-- 가장 최근 결제 서비스의 종료일 -->
+<!-- <select id = "showRecentPay" parameterType="model.PaymentDto" resultType="model.PaymentDto">
+	SELECT DATE_FORMAT(ENDDATE, '%Y-%m-%d') AS ENDDATE, BUYERID
+	FROM PAYMENT
+	WHERE BUYERID=#{buyerId}
+	ORDER BY ENDDATE DESC LIMIT 1
+</select> -->
+
+
+</mapper>
+
+
+

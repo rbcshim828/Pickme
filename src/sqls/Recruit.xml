@@ -1,0 +1,316 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE mapper
+  PUBLIC "-//www.mybatis.org//DTD Mapper 3.0//EN"
+  "http://www.mybatis.org/dtd/mybatis-3-mapper.dtd">
+  
+ <mapper namespace="Recruit">
+<!-- 마지막 시퀀스 뽑아내기 -->
+	<select id="getLastSeq" resultType="int">
+	SELECT LAST_INSERT_ID()
+	</select>
+ 	<select id="recGetRef" resultType="int">
+ 		SELECT IFNULL(MAX(REF),0)+1 FROM RECRUIT
+ 	</select>
+	<insert id="recInsert" parameterType="model.RecruitDto">
+		INSERT INTO RECRUIT(COMSEQ, COMNAME, TITLE, COMJOB1, COMJOB2, COMJOBTYPE,
+		MAINTASK, WORKINGFORM, REQUIREMENTS, SALARY,
+ 		CONTENT, HASHTAG, WDATE, EDATE, REF, READCOUNT, DEL, IMAGENAME)
+		VALUES (#{comSeq}, #{comName}, #{title}, #{comJob1}, #{comJob2}, #{comJobType},
+		#{mainTask}, #{workingForm}, #{requirements}, #{salary},
+		#{content}, #{hashTag}, SYSDATE(), #{edate}, #{ref}, 0, 0, #{imagename} )
+	</insert>
+	<insert id="recUpfile" parameterType="model.FilesDto">
+		INSERT INTO FILES (USETABLE, ORIGINNAME, NEWNAME, PATH, DEL, REF, STEP, FILETYPE )
+		VALUES ( 'RECRUIT', #{originname}, #{newname}, 'upload/recruit/', 0, #{ref}, #{step}, #{filetype} )
+	</insert> 
+	<!-- ================= recruit 테이블 imagename 을 originname -> newname 으로 바꾸기 -->
+	<update id="imageNameUpdate" parameterType="int">
+		<!-- UPDATE RECRUIT R
+		SET IMAGENAME=(SELECT NEWNAME FROM FILES F WHERE R.REF = F.REF AND USETABLE = 'RECRUIT' AND F.STEP=0 )
+		WHERE R.SEQ=#{ref} -->
+		UPDATE RECRUIT
+		SET IMAGENAME=(SELECT NEWNAME FROM FILES WHERE REF=${ref} AND USETABLE = 'RECRUIT' AND STEP=0 )
+		WHERE SEQ=${ref}
+	</update>
+	<!-- 채용탐색글 수 count -->
+	<select id="getCountRec" parameterType="model.RecruitParam" resultType="int">
+		SELECT IFNULL(COUNT(*),0) AS CNT FROM RECRUIT WHERE DEL=0
+		<if test="comJobType=='new'">
+		AND COMJOBTYPE = '신입'
+		</if>
+		<if test="comJobType=='career'">
+		AND COMJOBTYPE = '경력'
+		</if>
+		<if test="comJobType=='all'">
+		AND COMJOBTYPE = '경력무관'
+		</if>
+		<if test="occ != null and occ !=''">
+		AND COMJOB1 = #{occ}
+		</if>
+		<if test="job != null and job !=''">
+		AND COMJOB2 = #{job}
+		</if>
+		<if test="sKeyword != null and sKeyword !=''">
+		AND ( COMNAME LIKE UPPER(CONCAT('%', #{sKeyword}, '%')) OR COMNAME = UPPER(#{sKeyword})
+		OR  TITLE LIKE UPPER(CONCAT('%', #{sKeyword}, '%')) OR TITLE = UPPER(#{sKeyword})
+		OR  COMJOB1 LIKE UPPER(CONCAT('%', #{sKeyword}, '%')) OR COMJOB1 = UPPER(#{sKeyword})
+		OR  COMJOB2 LIKE UPPER(CONCAT('%', #{sKeyword}, '%')) OR COMJOB2 =UPPER(#{sKeyword})
+		OR  REQUIREMENTS LIKE UPPER(CONCAT('%', #{sKeyword}, '%')) OR REQUIREMENTS = UPPER(#{sKeyword})
+		OR  CONTENT LIKE UPPER(CONCAT('%', #{sKeyword}, '%')) OR CONTENT = UPPER(#{sKeyword}) 
+		OR  HASHTAG LIKE UPPER(CONCAT('%', #{sKeyword}, '%')) OR HASHTAG = UPPER(#{sKeyword}) )
+		</if>
+		<if test="sorting == 'newest' ">
+		ORDER BY SEQ DESC
+		</if>
+		<if test="sorting == 'popular' ">
+		ORDER BY READCOUNT DESC
+		</if>
+	</select>
+	<!-- (기업) 현재 공고중인 게시글 수 count -->
+	<select id="getComRecCount" resultType="int">
+		SELECT IFNULL(COUNT(*),0) AS CNT FROM RECRUIT WHERE COMSEQ=#{comSeq} AND DEL=0
+	</select>
+	<!-- (기업) 공고종료된 게시글 수 count -->
+	<select id="getComPastCount" resultType="int">
+		SELECT IFNULL(COUNT(*),0) AS CNT FROM RECRUIT WHERE COMSEQ=#{comSeq} AND DEL=1
+	</select>
+	
+	<!-- 채용탐색 들어가자마자 뿌려지는 전체 LIST(페이징)+검색-->
+ 	<select id="getRecAllList" parameterType="model.RecruitParam" resultType="model.RecruitDto">
+		SELECT SEQ, COMSEQ, COMNAME, TITLE, COMJOB1, COMJOB2, COMJOBTYPE,
+		MAINTASK, WORKINGFORM, REQUIREMENTS, SALARY,
+ 		CONTENT, HASHTAG, WDATE, EDATE, REF, READCOUNT, DEL, IMAGENAME
+		FROM ( SELECT * FROM RECRUIT WHERE DEL=0 ORDER BY SEQ DESC) R
+		WHERE 1=1
+		<if test="comJobType=='new'">
+		AND COMJOBTYPE = '신입'
+		</if>
+		<if test="comJobType=='career'">
+		AND COMJOBTYPE = '경력'
+		</if>
+		<if test="comJobType=='all'">
+		AND COMJOBTYPE = '경력무관'
+		</if>
+		<if test="job != null and job !=''">
+		AND COMJOB2 = #{job}
+		</if>
+		<if test="occ != null and occ !=''">
+		AND COMJOB1 = #{occ}
+		</if>
+		<if test="sKeyword != null and sKeyword !=''">
+		AND ( COMNAME LIKE UPPER(CONCAT('%', #{sKeyword}, '%')) OR COMNAME = UPPER(#{sKeyword})
+		OR  TITLE LIKE UPPER(CONCAT('%', #{sKeyword}, '%')) OR TITLE = UPPER(#{sKeyword})
+		OR  COMJOB1 LIKE UPPER(CONCAT('%', #{sKeyword}, '%')) OR COMJOB1 = UPPER(#{sKeyword})
+		OR  COMJOB2 LIKE UPPER(CONCAT('%', #{sKeyword}, '%')) OR COMJOB2 =UPPER(#{sKeyword})
+		OR  REQUIREMENTS LIKE UPPER(CONCAT('%', #{sKeyword}, '%')) OR REQUIREMENTS = UPPER(#{sKeyword})
+		OR  CONTENT LIKE UPPER(CONCAT('%', #{sKeyword}, '%')) OR CONTENT = UPPER(#{sKeyword}) 
+		OR  HASHTAG LIKE UPPER(CONCAT('%', #{sKeyword}, '%')) OR HASHTAG = UPPER(#{sKeyword}) )
+		</if>
+		<if test="sorting == 'newest' ">
+		ORDER BY SEQ DESC
+		</if>
+		<if test="sorting == 'popular' ">
+		ORDER BY READCOUNT DESC
+		</if>
+		LIMIT #{recordCountPerPage} OFFSET #{start} 
+	</select> 
+	<!-- 기업만 볼수있는 채용공고 list (현재공고) -->
+	<select id="getMyRecruitNow" parameterType="model.RecruitParam" resultType="model.RecruitDto">
+		SELECT SEQ, COMSEQ, COMNAME, TITLE, COMJOBTYPE, WDATE,EDATE, REF, READCOUNT, IMAGENAME
+		FROM ( SELECT * FROM RECRUIT WHERE COMSEQ=#{comSeq} AND DEL=0 ORDER BY SEQ DESC) R
+		LIMIT #{recordCountPerPage} OFFSET #{start}
+	</select> 
+	<!-- 기업만 볼수 있는 마감공고 list -->
+	<select id="getMyRecruitPast" parameterType="model.RecruitParam" resultType="model.RecruitDto">
+		SELECT SEQ, COMSEQ, COMNAME, TITLE, COMJOBTYPE, WDATE,EDATE, REF, READCOUNT, IMAGENAME
+		FROM ( SELECT * FROM RECRUIT WHERE COMSEQ=#{comSeq} AND DEL=2 ORDER BY SEQ DESC) R
+		LIMIT #{recordCountPerPage} OFFSET #{start}
+	</select> 
+	<!-- detail -->
+	<select id="getRecruitDetail" parameterType="int" resultType="model.RecruitDto">
+		SELECT SEQ, COMSEQ, COMNAME, TITLE, COMJOB1, COMJOB2, COMJOBTYPE, MAINTASK, WORKINGFORM, REQUIREMENTS, SALARY, CONTENT, HASHTAG, WDATE,EDATE, REF, READCOUNT, DEL, IMAGENAME
+		FROM RECRUIT 
+		WHERE SEQ=#{seq}
+	</select> 
+	<!-- readcount ++ -->
+	<update id="readCountUp" parameterType="int">
+		UPDATE RECRUIT
+		SET READCOUNT = READCOUNT+1
+		WHERE SEQ=#{seq}
+	</update>
+	<!-- 기업 주소 가져오는 함수 -->
+	<select id="getComInfo" parameterType="int" resultType="model.CMemberDto">
+		SELECT DEPARTMENT, ADDRESS, LOGOPATH, LOGONAME FROM C_MEMBER
+  		WHERE SEQ=#{seq}
+	</select>
+	<!-- ref가 동일한 이미지 가져오기 -->
+	<select id="getRecFile" parameterType="int" resultType="model.FilesDto">
+		SELECT SEQ, USETABLE, ORIGINNAME, NEWNAME, PATH, DEL, REF, STEP, FILETYPE
+		FROM FILES 
+		WHERE USETABLE='RECRUIT' AND REF=${ref}
+	</select> 
+	<!-- 공고 마감하기 -->
+	<update id="delRecruit" parameterType="int">
+		UPDATE RECRUIT
+		SET DEL=2
+		WHERE SEQ=#{seq}
+	</update>
+	<!-- 공고 update -->
+	<update id="recUpdate" parameterType="model.RecruitDto">
+		UPDATE RECRUIT
+		SET TITLE=#{title}, COMJOB1=#{comJob1}, COMJOB2=#{comJob2}, COMJOBTYPE=#{comJobType},
+		 MAINTASK=#{mainTask}, WORKINGFORM=#{workingForm}, REQUIREMENTS= #{requirements},
+		 SALARY=#{salary}, CONTENT=#{content}, HASHTAG=#{hashTag}, EDATE=#{edate}, IMAGENAME=#{imagename}
+		WHERE SEQ=#{seq}
+	</update>
+	<!-- 공고 UPDATE 할때 파일 테이블 DELETE -->
+	<delete id="delRecFile" parameterType="int">
+		DELETE FROM FILES
+		WHERE USETABLE='RECRUIT' AND REF = #{ref} 
+	</delete>
+	
+	<!-- 좋아요 눌렀을때 -->
+	<insert id="likeplus" parameterType="model.FavoriteDto">
+		INSERT INTO FAVORITE (ID, LIKEPICKSEQ, AUTH)
+		VALUES (#{email}, #{likePickSeq}, 3 )
+	</insert>
+	<!-- 좋아요 취소  -->
+	<delete id="likedel" parameterType="model.FavoriteDto">
+		DELETE FROM FAVORITE
+		WHERE ID=#{email} AND LIKEPICKSEQ=#{likePickSeq} AND AUTH=3
+	</delete>
+	<!-- (상세)해당 게시물 좋아요 TOTAL COUNT -->
+	<select id="likeRecTotal" resultType="int" parameterType="model.FavoriteDto">
+		SELECT COUNT(*) FROM FAVORITE WHERE LIKEPICKSEQ=#{likePickSeq} AND AUTH=3
+	</select>
+	<!-- (상세) 내가 좋아요 한 게시물  -->
+	<select id="likeCountByMem" resultType="int" parameterType="model.FavoriteDto">
+		SELECT COUNT(*) FROM FAVORITE WHERE ID=#{email} AND LIKEPICKSEQ=#{likePickSeq} AND AUTH=3
+	</select>
+	
+	<!-- (메인) 조회수 순으로 4개  보여주기-->
+	<!-- <select id="mainTopRecruit" resultType="model.RecruitDto">
+		SELECT * FROM RECRUIT WHERE DEL=0 ORDER BY READCOUNT DESC LIMIT 4
+	</select>
+	 -->
+	
+	<!-- @@@@ 지원하기부분 @@@@ -->
+	<!-- 이력서 목록 불러오기 -->
+	<select id="getMyResumes" parameterType="int" resultType="model.ResumeDto">
+	SELECT SEQ, NAME FROM RESUME
+	WHERE MEMSEQ = ${seq} AND DEL != 1
+	</select>
+	<!-- 제출할 지원서 불러오기  -->
+	<select id="getApplyResume" parameterType="model.ResumeDto" resultType="model.ResumeDto">
+	SELECT * FROM RESUME
+	WHERE SEQ = ${seq} AND MEMSEQ = ${memSeq}
+	</select>
+	<!-- 파일 내역 불러오기  -->
+	<select id="getResumeFile" parameterType="int" resultType="model.ResumeFileDto">
+	SELECT * FROM RESUME_FILE
+	WHERE RSMSEQ = ${seq}
+	</select>
+	<!-- 지원서 데이터베이스에 넣기 -->
+	<insert id="insertResume" parameterType="model.ResumeAfterDto">
+	INSERT INTO RESUME_AFTER ( MEMSEQ, JOBSEQ, COMSEQ, NAME, USERNAME, PHONE, EMAIL, INTRODUCE, WDATE, WHOSE, DEL, OPEN )
+	VALUES ( ${memSeq}, ${jobSeq}, ${comSeq}, #{name}, #{userName}, #{phone}, #{email}, #{introduce}, NOW(), 0, 0, 0)
+	</insert>
+	<!-- Apply 테이블에 데이터 넣기  -->
+	<insert id="insertApply" parameterType="model.CApplyDto">
+	INSERT INTO APPLY ( JOBSEQ, COMSEQ, COMNAME, MEMSEQ, ADATE, OPEN, CANCEL, CVSEQ, DEL)
+	VALUES( ${jobSeq}, ${comSeq}, #{comName}, ${memSeq}, NOW(), 0, 0, ${cvSeq}, 0)
+	</insert>
+	<!-- 디비에 넣은 이력서 시퀀스 뽑기 -->
+	<select id="getResumeLastSeq" resultType="int">
+	SELECT  LAST_INSERT_ID()
+	</select>
+	<!-- 디비에 파일 넣기 -->
+	<insert id="insertResumeFile" parameterType="model.ResumeFileDto">
+	INSERT INTO RESUME_FILE_AFTER ( RSMSEQ, ORIGINALNAME, STOREDNAME, FILEPATH )
+	VALUES ( ${rsmSeq}, #{originalName}, #{storedName}, #{filePath} )
+	</insert>
+	<!-- Resume 테이블에서 지원서 꺼내오기 -->
+	<select id="getSelectedResume" parameterType="int" resultType="model.ResumeAfterDto">
+	SELECT * FROM RESUME
+	WHERE SEQ = ${seq}
+	</select>
+	<!-- CAREER 테이블에서 경력 꺼내오기 -->
+	<select id="getSelectedResumeCareer" parameterType="int" resultType="model.CareerDto">
+	SELECT * FROM CAREER
+	WHERE RSMSEQ = ${seq}
+	</select>
+	<!-- Career_After에 경력사항 넣기 -->
+	<insert id="insertCareerAfter" parameterType="List">
+	insert into career_after ( RSMSEQ, COMPANY, POSITION, STARTDATE, ENDDATE, ING )
+	values 
+		<foreach collection="list" item="vo" separator=",">
+			( ${vo.rsmseq}, #{vo.company}, #{vo.position}, #{vo.startdate}, #{vo.enddate}, #{vo.ing} )
+		</foreach>
+	</insert>
+	
+	<!-- Eduaction 테이블에서 학력 꺼내오기 -->
+	<select id="getSelectedResumeEducation" parameterType="int" resultType="model.EducationDto">
+	SELECT * FROM Education
+	WHERE RSMSEQ = ${seq}
+	</select>
+	<!-- Education_After에 학력사항 넣기  -->
+	<insert id="insertEducationAfter" parameterType="List">
+	insert into education_after ( RSMSEQ, SCHOOL, MAJOR, STUDY, STARTDATE, ENDDATE, ING )
+	values 
+		<foreach collection="list" item="vo" separator=",">
+			( ${vo.rsmseq}, #{vo.school}, #{vo.major}, #{vo.study}, #{vo.startdate}, #{vo.enddate}, #{vo.ing} )
+		</foreach>
+	</insert>
+	
+	<!-- AwardsEtc 테이블에서 학력 꺼내오기 -->
+	<select id="getSelectedResumeAwards" parameterType="int" resultType="model.AwardsEtcDto">
+	SELECT * FROM AWARDSETC
+	WHERE RSMSEQ = ${seq}
+	</select>
+	
+	<!-- AwardsEtc_After에 학력사항 넣기  -->
+	<insert id="insertAwardsAfter" parameterType="List">
+	insert into AWARDSETC_after ( RSMSEQ, AWARDS, DETAIL, DATE )
+	values 
+		<foreach collection="list" item="vo" separator=",">
+			( ${vo.rsmseq}, #{vo.awards}, #{vo.detail}, #{vo.date} )
+		</foreach>
+	</insert>
+	
+	<!-- Language 테이블에서 학력 꺼내오기 -->
+	<select id="getSelectedResumeLanguage" parameterType="int" resultType="model.LanguageDto">
+	SELECT * FROM LANGUAGE
+	WHERE RSMSEQ = ${seq}
+	</select>
+	
+	<!-- Language_After에 학력사항 넣기  -->
+	<insert id="insertLanguageAfter" parameterType="List">
+	insert into LANGUAGE_after ( RSMSEQ, LANG, LEVEL, TEST, SCORE, DATE )
+	values 
+		<foreach collection="list" item="vo" separator=",">
+			( ${vo.rsmseq}, #{vo.lang}, #{vo.level}, #{vo.test}, #{vo.score}, #{vo.date})
+		</foreach>
+	</insert>
+	
+	<!-- Link 테이블에서 학력 꺼내오기 -->
+	<select id="getSelectedResumeLink" parameterType="int" resultType="model.LinkDto">
+	SELECT * FROM LINK
+	WHERE RSMSEQ = ${seq}
+	</select>
+	
+	<!-- Link_After에 학력사항 넣기  -->
+	<insert id="insertLinkAfter" parameterType="List">
+	insert into link_after ( RSMSEQ, URL )
+	values 
+		<foreach collection="list" item="vo" separator=",">
+			( ${vo.rsmseq}, #{vo.url} )
+		</foreach>
+	</insert>
+	
+	<!-- 지원한 내역있는지 확인하기 -->
+	<select id="checkIfApply" parameterType="model.ResumeAfterDto" resultType="int">
+	SELECT count(*) FROM resume_after
+	where jobseq = ${jobSeq} AND memseq = ${memSeq} 
+</select>
+	
+ </mapper>

@@ -1,0 +1,173 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+  
+<mapper namespace="CRequest">
+<!-- 
+<select id="getRequestList" resultType="model.CvRequestDto">
+<![CDATA[
+	SELECT cv_request.SEQ, a_member.seq as pseq, c_member.email, a_member.name, comment, accept, state, cv_request.del
+		,(SELECT 1 FROM FAVORITE WHERE FAVORITE.ID = C_MEMBER.EMAIL AND FAVORITE.LIKEPICKSEQ = cv_request.PSEQ GROUP BY FAVORITE.LIKEPICKSEQ) AS likePick
+		, IF(DATE(cv_request.rdate) < DATE(sysdate()), DATE_FORMAT(cv_request.rdate, '%Y-%m-%d'), DATE_FORMAT(cv_request.rdate, '%H : %i')) as rdate
+	FROM cv_request , a_member ,  C_MEMBER 
+	WHERE cv_request.cseq = #{c_seq} AND cv_request.del = 0 AND cv_request.cancel = 0 AND a_member.seq = cv_request.pseq
+		  AND cv_request.cseq =C_MEMBER.SEQ 
+
+	ORDER BY CV_REQUEST.RDATE DESC
+]]>
+</select>
+ -->
+ 
+<!-- 이력서 열람요청 리스트 호출 -->
+<select id="getRequestList" parameterType="model.MessageParam" resultType="model.CvRequestDto">
+
+	SELECT cv_request.SEQ, a_member.seq as pseq, c_member.email, a_member.name, comment, accept, state, cv_request.del, cv_request.cvSeq, a_member.email as pEmail
+		,(SELECT 1 FROM FAVORITE WHERE FAVORITE.ID = C_MEMBER.EMAIL AND FAVORITE.LIKEPICKSEQ = cv_request.PSEQ GROUP BY FAVORITE.LIKEPICKSEQ) AS likePick
+		, <![CDATA[ IF(DATE(cv_request.rdate) < DATE(sysdate()), DATE_FORMAT(cv_request.rdate, '%Y-%m-%d'), DATE_FORMAT(cv_request.rdate, '%H : %i')) as rdate ]]>
+	FROM cv_request , a_member ,  C_MEMBER 
+	WHERE cv_request.cseq = #{toSeq} AND cv_request.del = 0 AND cv_request.cancel = 0 AND a_member.seq = cv_request.pseq
+		  AND cv_request.cseq =C_MEMBER.SEQ
+	
+	<if test="sKeyword != null and sKeyword !=''">
+		AND a_member.name LIKE CONCAT('%', #{sKeyword}, '%')
+	</if>
+	ORDER BY cv_request.rdate DESC
+	LIMIT #{recordCountPerPage, jdbcType=INTEGER} OFFSET #{start, jdbcType=INTEGER}
+
+</select>
+
+
+<!-- 이력서 열람요청 - 관심인재 리스트 -->	
+<select id="requestLike" resultType="model.CvRequestDto">
+<![CDATA[	
+	select cv_request.seq, a_member.seq as pseq, a_member.name, comment, accept, state, cv_request.del, c_member.email, cv_request.cvSeq, a_member.email as pEmail
+		, IF(DATE(cv_request.rdate) < DATE(sysdate()), DATE_FORMAT(cv_request.rdate, '%Y-%m-%d'), DATE_FORMAT(cv_request.rdate, '%H : %i')) as rdate
+	from cv_request , a_member , c_member , favorite
+	where cv_request.cseq = #{toSeq} and cv_request.del = 0 and a_member.seq = cv_request.pseq AND cv_request.cancel = 0
+		  and cv_request.cseq =c_member.seq and favorite.id = c_member.email and favorite.likepickseq = cv_request.pseq
+]]>
+	<if test="sKeyword != null and sKeyword !=''">
+		AND a_member.name LIKE CONCAT('%', #{sKeyword}, '%')
+	</if>
+	ORDER BY cv_request.rdate DESC
+	LIMIT #{recordCountPerPage, jdbcType=INTEGER} OFFSET #{start, jdbcType=INTEGER}
+</select>
+
+
+<select id="getTotalRecordCount" parameterType="model.MessageParam" resultType="int">
+ 	SELECT COUNT(*)
+ 	FROM cv_request r, a_member a, c_member c
+	WHERE r.cseq = #{toSeq} AND r.del = 0 AND r.cancel = 0 AND a.seq = r.pseq AND r.cseq =c.seq 
+	<if test="sKeyword != null and sKeyword !=''">
+	AND a.name LIKE CONCAT('%', #{sKeyword}, '%');
+	</if>
+</select>
+
+
+<select id="getLikeTotalRecordCount" parameterType="model.MessageParam" resultType="int">
+ 	SELECT COUNT(*)
+ 	FROM cv_request r, a_member a, c_member c, favorite f
+	WHERE r.cseq = #{toSeq} AND r.del = 0 AND r.cancel = 0 AND a.seq = r.pseq AND r.cseq =c.seq AND f.id = c.email and f.likepickseq = r.pseq
+	<if test="sKeyword != null and sKeyword !=''">
+	AND a.name LIKE CONCAT('%', #{sKeyword}, '%');
+	</if>
+</select>
+
+
+
+
+<!-- 이력서 열람요청 목록 삭제 -->
+<update id="requestDelete" parameterType="java.lang.String">
+	update cv_request
+	set del = 1
+	where seq = #{seq} 
+</update>
+
+<!-- 관심인재 추가 -->
+<insert id="addLike" parameterType="model.FavoriteDto">
+	insert into favorite
+	values(seq, #{email}, #{likePickSeq}, null, 0)
+</insert>
+
+<!-- 관심인재 삭제 -->
+<delete id="delLike" parameterType="model.FavoriteDto">
+	DELETE FROM FAVORITE
+	WHERE ID=#{email } AND LIKEPICKSEQ=#{likePickSeq}
+</delete>
+
+<!-- 이력서 열람요청 취소 -->
+<update id="requestCancel" parameterType="java.lang.String">
+	UPDATE CV_REQUEST
+	SET CANCEL = 1
+	WHERE SEQ = #{cv_seq}
+</update>
+
+
+
+
+<!-- 이력서 열람요청에서 구직자 프로필 가져오기 -->
+<select id="getaMemberProfile" parameterType="java.lang.String" resultType="model.AMemberDto">
+	SELECT *
+	FROM A_MEMBER
+	WHERE SEQ = #{seq}
+</select>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<!-- 이력서 열람 승인시 CV_COMPANY 조회하여 이력서 가져오기 -->
+<select id="reqResumeOpen" parameterType="model.CvRequestDto" resultType="model.CvCompanyDto">
+	SELECT  COM.*
+	FROM CV_COMPANY com, CV_REQUEST req 
+	WHERE com.seq = req.cvseq AND com.mememail = #{pEmail} AND com.comseq = #{comSeq}
+</select>
+ 
+
+
+<!-- 이력서 열람시 구직자에게 open값 확인되도록 -->
+<update id="setResumeOpen" parameterType="int">
+	UPDATE RESUME_AFTER
+	SET OPEN = 1
+	WHERE SEQ = #{cvSeq}
+</update>
+
+
+
+
+
+
+
+
+
+
+
+
+
+</mapper>
+
+<!-- 	SELECT cv_request.SEQ, a_member.seq as pseq, c_member.email, a_member.name, rdate, comment, accept, state, cv_request.del ,C_MEMBER.EMAIL 
+	,(SELECT 1 FROM FAVORITE WHERE FAVORITE.ID = C_MEMBER.EMAIL AND FAVORITE.LIKEPICKSEQ = cv_request.PSEQ GROUP BY FAVORITE.LIKEPICKSEQ) AS likePick
+	FROM cv_request , a_member ,  C_MEMBER 
+	WHERE cv_request.cseq = 2 and cv_request.del = 0 and cv_request.cancel = 0 and a_member.seq = cv_request.pseq
+		  and cv_request.cseq =C_MEMBER.SEQ
+	ORDER BY CV_REQUEST.RDATE DESC -->
+	
+	
+	<!--	 
+	select a_member.seq, a_member.name, rdate, comment, accept, state, cv_request.del
+	from cv_request inner join a_member 
+	on cv_request.cseq = 2 and cv_request.del = 0 and a_member.seq = cv_request.pseq
+	-->
+	
